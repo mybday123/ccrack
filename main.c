@@ -43,7 +43,6 @@ int main(int argc, char *argv[]) {
         switch (hashtype) {
             case HASH_MD5:
                 hash_md5(word, hashed);
-                printf("hashed: %s\ntarget_hash: %s\n", hashed, target_hash);
                 break;
             case HASH_SHA1:
                 hash_sha1(word, hashed);
