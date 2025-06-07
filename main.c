@@ -29,43 +29,59 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    FILE *wordlistptr = fopen(wordlist_path, "r");
-    if (!wordlistptr) {
-        perror("Cannot open wordlist");
-        exit(1);
+    size_t word_count = 0;
+    char **words = load_wordlist(wordlist_path, &word_count);
+    if (!words) {
+        perror("Cannot load wordlist");
+        return 1;
+    }
+    if (word_count == 0) {
+        fprintf(stderr, "Wordlist is empty\n");
+        return 1;
     }
 
-    char word[WORD_MAX];
-    char hashed[HASH_HEX_MAX];
-    bool found = false;
+    long ncores = sysconf(_SC_NPROCESSORS_ONLN);
+    int nthreads = (ncores > 1) ? (ncores - 1) : 1;
 
-    while (fgets(word, WORD_MAX, wordlistptr)) {
-        word[strcspn(word, "\r\n")] = 0;
+    pthread_t threads[nthreads];
+    struct CrackThreadArgs args[nthreads];
+    int found = 0;
+    char result_word[WORD_MAX] = {0};
+    pthread_mutex_t result_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-        switch (hashtype) {
-            case HASH_MD5:
-                hash_md5(word, hashed);
-                break;
-            case HASH_SHA1:
-                hash_sha1(word, hashed);
-                break;
-            case HASH_SHA256:
-                hash_sha256(word, hashed);
-                break;
-            default:
-                break;
-        }
-
-        if(strcmp(hashed, target_hash) == 0) {
-            printf("Match found: '%s'\n", word);
-            found = true;
-            break;
-        }
+    size_t chunk = word_count / nthreads;
+    size_t rem = word_count % nthreads;
+    size_t start = 0;
+    for (int i = 0; i < nthreads; ++i) {
+        size_t end = start + chunk + (i < rem ? 1 : 0);
+        args[i].words = words;
+        args[i].start = start;
+        args[i].end = end;
+        args[i].target_hash = target_hash;
+        args[i].hashtype = hashtype;
+        args[i].found = &found;
+        args[i].result_word = result_word;
+        args[i].result_mutex = &result_mutex;
+        pthread_create(&threads[i], NULL, crack_worker, &args[i]);
+        start = end;
     }
 
-    fclose(wordlistptr);
-    if (!found) {
+    for (int i = 0; i < nthreads; ++i) {
+        pthread_join(threads[i], NULL);
+    }
+
+    if (found) {
+        printf("Match found: '%s'\n", result_word);
+    } else {
         puts("No match found in wordlist :(");
     }
+
+    for (size_t i = 0; i < word_count; ++i) {
+        free(words[i]);
+    }
+    free(words);
+
+    pthread_mutex_destroy(&result_mutex);
+
     return 0;
 }
