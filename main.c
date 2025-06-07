@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
         puts("Using SHA256");
         hashtype = HASH_SHA256;
     } else {
-        fprintf(stderr, "Unsupported length: %zu", hash_len);
+        fprintf(stderr, "Unsupported length: %zu\n", hash_len);
         exit(1);
     }
 
