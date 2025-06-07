@@ -25,4 +25,19 @@ void hash_md5(const char *input, char *out_hex);
 void hash_sha1(const char *input, char *out_hex);
 void hash_sha256(const char *input, char *out_hex);
 
+char **load_wordlist(const char *filename, size_t *count);
+
+struct CrackThreadArgs {
+    char **words;
+    size_t start;
+    size_t end;
+    const char *target_hash;
+    enum HashType hashtype;
+    volatile int *found;
+    char *result_word;
+    pthread_mutex_t *result_mutex;
+};
+
+void *crack_worker(void *arg);
+
 #endif // CCRACK_H

@@ -2,6 +2,9 @@
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 #include <stdio.h>
+#include <pthread.h>
+#include <stdatomic.h>
+#include <unistd.h>
 
 void to_hex(const unsigned char *digest, int len, char *out_hex) {
     for (int i = 0; i < len; i++) {
